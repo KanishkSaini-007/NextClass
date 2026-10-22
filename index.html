@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NextClass - know what class is next, at a glance</title>
+<meta name="description" content="A private weekly timetable that tells you what class you are in, what is next, and exactly how long until it starts. No login, your timetable stays in your browser.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2310182b'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%23ffd166' stroke-width='3'/%3E%3Cpath d='M16 11v5l4 3' stroke='%23ffd166' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+:root{--bg:#10182b;--bg2:#0b1220;--card:#17223a;--line:#26334f;--ink:#eef2fb;--mut:#8fa0c2;--acc:#ffd166;--acc-d:#e0a92e;--now:#5eead4;--bad:#ff8a7a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--ink);font:15px/1.55 system-ui,sans-serif;min-height:100vh}
+.wrap{max-width:760px;margin:0 auto;padding:26px 16px 60px}
+header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+h1{font-size:26px;letter-spacing:.4px}
+h1 em{color:var(--acc);font-style:normal}
+.clock{font:600 15px ui-monospace,'JetBrains Mono',monospace;color:var(--mut);text-align:right}
+.clock b{color:var(--ink);font-size:19px;display:block}
+.hero{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:20px;position:relative;overflow:hidden}
+.hero .lbl{font:700 11px system-ui,sans-serif;text-transform:uppercase;letter-spacing:1.2px;color:var(--mut);margin-bottom:6px}
+.hero .big{font-size:24px;font-weight:700;line-height:1.25}
+.hero .big .room{color:var(--mut);font-size:16px;font-weight:400}
+.hero .meta{color:var(--mut);font-size:14px;margin-top:6px}
+.hero .count{font:700 30px ui-monospace,monospace;color:var(--acc);margin-top:8px}
+.hero.now .count{color:var(--now)}
+.hero .pbar{height:8px;background:var(--bg2);border-radius:4px;overflow:hidden;margin-top:12px}
+.hero .pbar i{display:block;height:100%;background:var(--now);transition:width 1s linear}
+.hero .chip{position:absolute;top:16px;right:16px;font:700 11px system-ui,sans-serif;letter-spacing:1px;padding:5px 10px;border-radius:20px;background:#5eead422;color:var(--now);border:1px solid #5eead455}
+.hero.up .chip{background:#ffd16622;color:var(--acc);border-color:#ffd16655}
+.hero.free .chip{background:#8fa0c222;color:var(--mut);border-color:var(--line)}
+.tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.tabs button{flex:1;min-width:64px;background:var(--card);border:1px solid var(--line);color:var(--mut);border-radius:9px;padding:9px 4px;font:600 13px system-ui,sans-serif;cursor:pointer}
+.tabs button.on{background:var(--acc);border-color:var(--acc);color:#1a1206}
+.tabs button.today:not(.on){border-color:var(--acc-d);color:var(--acc)}
+.cl{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:12px 14px;margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.cl.cur{border-color:var(--now)}
+.cl input{background:var(--bg2);border:1px solid var(--line);border-radius:7px;color:var(--ink);padding:8px 10px;font:14px system-ui,sans-serif}
+.cl input.nm{flex:2;min-width:130px}
+.cl input.rm{flex:1;min-width:70px}
+.cl input.tm{width:96px;font-family:ui-monospace,monospace}
+.cl .del{border:none;background:none;color:var(--bad);font-size:18px;cursor:pointer;padding:4px 8px}
+.cl.invalid input.tm{border-color:var(--bad)}
+.empty{background:var(--card);border:1px dashed var(--line);border-radius:11px;padding:26px;text-align:center;color:var(--mut)}
+.empty b{color:var(--ink)}
+.addrow{display:flex;gap:8px;margin:14px 0 26px;flex-wrap:wrap}
+button.act{background:var(--acc);border:1px solid var(--acc);color:#1a1206;border-radius:8px;padding:9px 16px;font:700 13px system-ui,sans-serif;cursor:pointer}
+button.ghost{background:none;border:1px solid var(--line);color:var(--mut);border-radius:8px;padding:9px 16px;font:600 13px system-ui,sans-serif;cursor:pointer}
+button.ghost:hover{color:var(--ink);border-color:var(--mut)}
+footer{color:var(--mut);font-size:13px;margin-top:26px;padding-top:14px;border-top:1px solid var(--line)}
+.hint{color:var(--mut);font-size:12.5px;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div><h1>Next<em>Class</em></h1><div class="hint">What class am I in, what is next, and how long until it starts.</div></div>
+  <div class="clock"><b id="clockTime">--:--:--</b><span id="clockDay"></span></div>
+</header>
+
+<div class="hero" id="hero">
+  <div class="lbl" id="heroLbl">Loading</div>
+  <div class="big" id="heroBig">-</div>
+  <div class="meta" id="heroMeta"></div>
+  <div class="count" id="heroCount"></div>
+  <div class="pbar" id="heroBar" style="display:none"><i id="heroBarFill"></i></div>
+</div>
+
+<div class="tabs" id="tabs"></div>
+<div id="dayList"></div>
+<div class="addrow">
+  <button class="act" id="addBtn">+ Add a class</button>
+  <button class="ghost" id="sampleBtn">Load a sample week</button>
+  <button class="ghost" id="clearBtn">Clear everything</button>
+</div>
+
+<footer>
+  <p>Your timetable is saved only in this browser (localStorage) - no account, no sync. Times are 24-hour. Built by Kanishk Saini as a learning project.</p>
+</footer>
+</div>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const SHORT=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const KEY='nextclass_v1';
+let state={classes:[]};
+try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.classes))state=s;}catch(e){}
+const save=()=>localStorage.setItem(KEY,JSON.stringify(state));
+const esc=s=>String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const todayIdx=()=>((new Date().getDay())+6)%7; // 0=Mon
+let view=todayIdx();
+const toMin=t=>{const m=/^(\d{1,2}):(\d{2})$/.exec(t||'');return m?(+m[1])*60+(+m[2]):null};
+const toHM=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes()+d.getSeconds()/60};
+const valid=c=>c.name.trim()&&toMin(c.start)!=null&&toMin(c.end)!=null&&toMin(c.start)<toMin(c.end);
+const dayClasses=d=>state.classes.filter(c=>c.day===d&&valid(c)).sort((a,b)=>toMin(a.start)-toMin(b.start));
+
+function nextUp(){
+  const t=todayIdx(),nm=nowMin();
+  for(let off=0;off<7;off++){
+    const d=(t+off)%7;
+    for(const c of dayClasses(d)){
+      const s=toMin(c.start);
+      if(off>0||s>nm)return{c,day:d,inMin:s-nm+off*1440};
+    }
+  }
+  return null;
+}
+function currentClass(){
+  const nm=nowMin();
+  return dayClasses(todayIdx()).find(c=>toMin(c.start)<=nm&&nm<toMin(c.end))||null;
+}
+
+function renderHero(){
+  const h=$('#hero'),cur=currentClass();
+  h.classList.remove('now','up','free');
+  $('#heroBar').style.display='none';
+  if(cur){
+    h.classList.add('now');
+    $('#heroLbl').textContent='In class right now';
+    $('#heroBig').innerHTML=esc(cur.name)+(cur.room?` <span class="room">&middot; ${esc(cur.room)}</span>`:'');
+    const s=toMin(cur.start),e=toMin(cur.end),nm=nowMin();
+    $('#heroMeta').innerHTML=`${cur.start} - ${cur.end} &middot; ends in <b style="color:var(--now)">${Math.ceil(e-nm)} min</b>`;
+    $('#heroCount').textContent='';
+    $('#heroBar').style.display='';
+    $('#heroBarFill').style.width=Math.min(100,(nm-s)/(e-s)*100)+'%';
+    setChip('NOW','now');
+  }else{
+    const nx=nextUp();
+    if(nx){
+      h.classList.add('up');
+      const isToday=nx.day===todayIdx();
+      $('#heroLbl').textContent=isToday?'Next class today':'Next class this week';
+      $('#heroBig').innerHTML=esc(nx.c.name)+(nx.c.room?` <span class="room">&middot; ${esc(nx.c.room)}</span>`:'');
+      $('#heroMeta').textContent=`${isToday?'Today':DAYS[nx.day]} &middot; ${nx.c.start} - ${nx.c.end}`;
+      const total=Math.max(0,nx.inMin);
+      const hh=Math.floor(total/60),mm=Math.floor(total%60),ss=Math.floor((total*60)%60);
+      $('#heroCount').textContent='starts in '+(hh>0?hh+'h ':'')+String(mm).padStart(2,'0')+'m '+String(ss).padStart(2,'0')+'s';
+      setChip(isToday?'TODAY':SHORT[nx.day].toUpperCase(),'up');
+    }else{
+      h.classList.add('free');
+      $('#heroLbl').textContent='No classes on the timetable';
+      $('#heroBig').textContent='Nothing scheduled yet';
+      $('#heroMeta').textContent='Add your weekly classes below and this panel turns into your live "what is next" board.';
+      $('#heroCount').textContent='';
+      setChip('FREE','free');
+    }
+  }
+}
+function setChip(txt){
+  let ch=$('#hero .chip');
+  if(!ch){ch=document.createElement('span');ch.className='chip';$('#hero').appendChild(ch);}
+  ch.textContent=txt;
+}
+
+function renderTabs(){
+  const t=todayIdx();
+  $('#tabs').innerHTML=SHORT.map((d,i)=>`<button data-d="${i}" class="${i===view?'on':''} ${i===t?'today':''}">${d}${i===t?' &middot;':''}</button>`).join('');
+}
+function renderDay(){
+  const list=state.classes.map((c,i)=>({c,i})).filter(x=>x.c.day===view)
+    .sort((a,b)=>(toMin(a.c.start)??1e9)-(toMin(b.c.start)??1e9));
+  const cur=currentClass(),t=todayIdx();
+  if(!list.length){
+    $('#dayList').innerHTML=`<div class="empty"><b>${DAYS[view]} is free.</b><br>No classes here yet - add one below.</div>`;
+    return;
+  }
+  $('#dayList').innerHTML=list.map(({c,i})=>{
+    const isCur=cur&&view===t&&c.name===cur.name&&c.start===cur.start&&c.end===cur.end;
+    return `<div class="cl ${isCur?'cur':''} ${valid(c)?'':'invalid'}">
+      <input class="tm" data-i="${i}" data-f="start" value="${esc(c.start)}" placeholder="09:00" title="start (24h)">
+      <input class="tm" data-i="${i}" data-f="end" value="${esc(c.end)}" placeholder="10:00" title="end (24h)">
+      <input class="nm" data-i="${i}" data-f="name" value="${esc(c.name)}" placeholder="Subject">
+      <input class="rm" data-i="${i}" data-f="room" value="${esc(c.room||'')}" placeholder="Room (optional)">
+      <button class="del" data-del="${i}" title="remove">&times;</button>
+    </div>`;}).join('');
+}
+function renderAll(){renderTabs();renderDay();save();}
+
+document.addEventListener('click',e=>{
+  const d=e.target.dataset;
+  if(d.d!=null){view=+d.d;renderTabs();renderDay();return;}
+  if(d.del!=null){state.classes.splice(+d.del,1);renderAll();return;}
+});
+document.addEventListener('input',e=>{
+  const d=e.target.dataset;
+  if(d.i!=null&&d.f){state.classes[+d.i][d.f]=e.target.value;save();renderHero();}
+});
+document.addEventListener('change',e=>{const d=e.target.dataset;if(d.i!=null)renderDay();});
+$('#addBtn').onclick=()=>{state.classes.push({day:view,name:'',room:'',start:'',end:''});renderAll();const ins=document.querySelectorAll('#dayList .cl input.tm');if(ins.length)ins[ins.length-2].focus();};
+$('#sampleBtn').onclick=()=>{
+  if(state.classes.length&&!confirm('Replace your current timetable with a sample week?'))return;
+  state.classes=[
+    {day:0,name:'Mathematics I',room:'A-101',start:'09:00',end:'10:00'},
+    {day:0,name:'Physics',room:'B-204',start:'10:15',end:'11:15'},
+    {day:0,name:'Programming Lab',room:'Lab 3',start:'11:30',end:'13:30'},
+    {day:1,name:'Data Structures',room:'A-102',start:'09:00',end:'10:30'},
+    {day:1,name:'English Comm.',room:'C-07',start:'11:00',end:'12:00'},
+    {day:2,name:'Mathematics I',room:'A-101',start:'10:00',end:'11:00'},
+    {day:2,name:'Electronics',room:'B-110',start:'11:15',end:'12:15'},
+    {day:3,name:'Data Structures',room:'A-102',start:'09:00',end:'10:30'},
+    {day:3,name:'Sports Hour',room:'Ground',start:'16:00',end:'17:00'},
+    {day:4,name:'Physics',room:'B-204',start:'09:30',end:'10:30'},
+    {day:4,name:'Programming Lab',room:'Lab 3',start:'11:00',end:'13:00'},
+  ];
+  renderAll();
+};
+$('#clearBtn').onclick=()=>{if(state.classes.length&&confirm('Remove every class from the timetable?')){state.classes=[];renderAll();renderHero();}};
+
+function tick(){
+  const d=new Date();
+  $('#clockTime').textContent=d.toLocaleTimeString('en-GB');
+  $('#clockDay').textContent=d.toLocaleDateString([],{weekday:'long',day:'numeric',month:'short'});
+  renderHero();
+}
+setInterval(tick,1000);
+renderAll();tick();
+</script>
+</body>
+</html>
