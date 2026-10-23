@@ -121,7 +121,8 @@ function renderHero(){
     $('#heroLbl').textContent='In class right now';
     $('#heroBig').innerHTML=esc(cur.name)+(cur.room?` <span class="room">&middot; ${esc(cur.room)}</span>`:'');
     const s=toMin(cur.start),e=toMin(cur.end),nm=nowMin();
-    $('#heroMeta').innerHTML=`${cur.start} - ${cur.end} &middot; ends in <b style="color:var(--now)">${Math.ceil(e-nm)} min</b>`;
+    const later=dayClasses(todayIdx()).find(c=>toMin(c.start)>toMin(cur.start));
+    $('#heroMeta').innerHTML=`${cur.start} - ${cur.end} &middot; ends in <b style="color:var(--now)">${Math.ceil(e-nm)} min</b>`+(later?` &middot; then <b>${esc(later.name)}</b> at ${later.start}`:'');
     $('#heroCount').textContent='';
     $('#heroBar').style.display='';
     $('#heroBarFill').style.width=Math.min(100,(nm-s)/(e-s)*100)+'%';
@@ -218,4 +219,4 @@ setInterval(tick,1000);
 renderAll();tick();
 </script>
 </body>
-</html>
+                                             </html>
