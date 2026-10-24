@@ -134,7 +134,7 @@ function renderHero(){
       const isToday=nx.day===todayIdx();
       $('#heroLbl').textContent=isToday?'Next class today':'Next class this week';
       $('#heroBig').innerHTML=esc(nx.c.name)+(nx.c.room?` <span class="room">&middot; ${esc(nx.c.room)}</span>`:'');
-      $('#heroMeta').textContent=`${isToday?'Today':DAYS[nx.day]} &middot; ${nx.c.start} - ${nx.c.end}`;
+      $('#heroMeta').textContent=`${isToday?'Today':DAYS[nx.day]} \u00b7 ${nx.c.start} - ${nx.c.end}`;
       const total=Math.max(0,nx.inMin);
       const hh=Math.floor(total/60),mm=Math.floor(total%60),ss=Math.floor((total*60)%60);
       $('#heroCount').textContent='starts in '+(hh>0?hh+'h ':'')+String(mm).padStart(2,'0')+'m '+String(ss).padStart(2,'0')+'s';
@@ -219,4 +219,4 @@ setInterval(tick,1000);
 renderAll();tick();
 </script>
 </body>
-                                             </html>
+  </html>
